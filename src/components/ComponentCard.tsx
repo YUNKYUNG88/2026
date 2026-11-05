@@ -21,10 +21,12 @@ export function ComponentCard({ component, onRemove, onRegenerate, isLoading }: 
   });
 
   return (
-    <div className="component-card">
+    <div className="component-card window">
+      <div className="titlebar">
+        <span>{createdAt}</span>
+      </div>
       <div className="card-header">
         <div className="card-title-group">
-          <span>{createdAt}</span>
           <p className="card-prompt">{component.prompt}</p>
         </div>
         <div className="card-actions">

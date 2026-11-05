@@ -8,20 +8,19 @@
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --font-ui: 'Galmuri11', 'Malgun Gothic', system-ui, sans-serif;
+  --font-head: 'Galmuri14', 'Galmuri11', 'Malgun Gothic', sans-serif;
+  --font-mono: 'GalmuriMono11', Consolas, monospace;
 }
 
 body {
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    sans-serif;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.95)),
-    var(--background);
-  color: var(--foreground);
   min-height: 100vh;
+  font-family: var(--font-ui);
+  color: #141414;
+  /* 1비트 디더링 책상 */
+  background-color: #bcd5d0;
+  background-image: conic-gradient(#a2bfb9 25%, transparent 0 50%, #a2bfb9 0 75%, transparent 0);
+  background-size: 4px 4px;
 }
 
 button,

@@ -47,35 +47,44 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <div className="brand-mark">RC</div>
-        <div className="header-copy">
-          <span className="eyebrow">React Component Generator</span>
-          <h1>프롬프트로 만드는 UI 워크벤치</h1>
-          <p>요청을 입력하고, 생성된 React 컴포넌트를 바로 미리보고 코드로 확인합니다.</p>
+      <header className="app-header window">
+        <div className="titlebar">
+          <span>React Component Generator</span>
         </div>
-        <div className="header-meta" aria-label="현재 작업 상태">
-          <div>
-            <span>Provider</span>
-            <strong>{activeProvider}</strong>
+        <div className="header-body">
+          <div className="brand-mark" aria-hidden="true">
+            RC
           </div>
-          <div>
-            <span>Components</span>
-            <strong>{components.length}</strong>
+          <div className="header-copy">
+            <h1>프롬프트로 만드는 UI 워크벤치</h1>
+            <p>요청을 입력하고, 생성된 React 컴포넌트를 바로 미리보고 코드로 확인합니다.</p>
+          </div>
+          <div className="header-meta" aria-label="현재 작업 상태">
+            <div>
+              <span>AI 제공자</span>
+              <strong>{activeProvider}</strong>
+            </div>
+            <div>
+              <span>생성한 수</span>
+              <strong>{components.length}</strong>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="workspace">
-        <section className="composer-panel" aria-label="컴포넌트 생성">
+        <section className="composer-panel window" aria-label="컴포넌트 생성">
+          <div className="titlebar">
+            <span>새 컴포넌트</span>
+          </div>
           <PromptInput onGenerate={handleGenerate} isLoading={isLoading} />
         </section>
 
-        <aside className="settings-panel" aria-label="실행 설정">
-          <div className="settings-header">
-            <span className="panel-kicker">Runtime</span>
-            <h2>실행 설정</h2>
+        <aside className="settings-panel window" aria-label="실행 설정">
+          <div className="titlebar">
+            <span>실행 설정</span>
           </div>
+          <div className="window-body">
           <div className="provider-select">
             <label htmlFor="provider">Provider</label>
             <select
@@ -118,6 +127,7 @@ function App() {
               {hasEnvKey ? '.env 키가 연결되어 있습니다.' : '직접 입력하거나 서버 환경변수를 설정하세요.'}
             </p>
           </div>
+          </div>
         </aside>
       </main>
 
@@ -130,10 +140,7 @@ function App() {
       <section className="results-section">
         {components.length > 0 && (
           <div className="results-header">
-            <div>
-              <span className="panel-kicker">Generated</span>
-              <h2>생성된 컴포넌트</h2>
-            </div>
+            <h2>생성된 컴포넌트</h2>
             <button className="btn-clear" onClick={clearAll}>
               전체 삭제
             </button>
@@ -141,7 +148,7 @@ function App() {
         )}
 
         {components.length === 0 && !isLoading && (
-          <div className="empty-state">
+          <div className="empty-state window">
             <div className="empty-preview" aria-hidden="true">
               <div className="empty-window">
                 <span />
@@ -161,7 +168,7 @@ function App() {
         )}
 
         {isLoading && (
-          <div className="loading-card">
+          <div className="loading-card window">
             <div className="loading-pulse" />
             <p>컴포넌트를 생성하고 있습니다...</p>
           </div>
