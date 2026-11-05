@@ -34,6 +34,19 @@
 - `git commit` 실행 전 PreToolUse 훅(`.claude/hooks/require-tests-before-commit.ts`)이 `bun run test`를 돌리고, 하나라도 실패하면 커밋을 차단(exit 2)한다.
 - 차단되면 실패한 테스트를 고친 뒤 다시 커밋한다. 훅을 끄거나, 테스트를 skip/삭제해서 통과시키지 마라.
 
+### TDD 리마인더 훅
+
+- 파일을 `Write`/`Edit`하기 전에 PreToolUse 훅(`.claude/hooks/tdd-reminder.ts`)이 `.claude/rules/tdd.md` 핵심을 컨텍스트로 주입한다. 차단은 하지 않는다.
+- 테스트 파일(`*.test.*`)과 프로덕션 코드에 서로 다른 문구를 주입한다. `.md`, `.json`, `.css`, `*.config.*`, `.d.ts`는 TDD 불필요 대상이라 건너뛴다.
+- 주입된 리마인더를 무시하지 마라. 프로덕션 코드를 먼저 썼다면 삭제하고 RED부터 다시 시작한다.
+
+### evaluator 서브 에이전트
+
+- 코드 작성/수정을 마치면 커밋이나 완료 보고 전에 `evaluator`(`.claude/agents/evaluator.md`)를 호출한다. 호출 프롬프트에 변경한 파일 경로와 구현 의도를 넘긴다.
+- evaluator는 구현이 틀렸다고 가정하는 적대적 리뷰어이며 읽기 전용(Read, Grep, Glob)이고 opus 모델이다.
+- `FAIL`/`CONDITIONAL` 판정의 CRITICAL·MAJOR 결함은 고친 뒤 다시 호출한다. 근거 없이 무시하지 마라. 반박하려면 코드나 테스트 근거를 댄다.
+- 문서·설정만 바꾼 경우(`.md`, `.json`, `*.config.*`)는 생략할 수 있다.
+
 ### 생성 코드 계약 (Hard Constraint)
 
 - 미리보기는 react-live `noInline` 모드다 (`src/components/LivePreview.tsx:14`). 생성 코드 끝에 `render(<Component />)` 호출이 있어야 렌더된다. `import`, TypeScript 문법, 마크다운 펜스가 있으면 실행에 실패한다.
