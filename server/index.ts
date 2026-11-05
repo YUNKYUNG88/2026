@@ -1,5 +1,12 @@
-import { stripCodeFences, ensureRenderCall } from './generator';
-import { withModelFallback } from './fallback';
+import {
+  parseSSE,
+  anthropicTextDelta,
+  googleTextDelta,
+  toEventStream,
+  friendlyErrorMessage,
+  withStreamFallback,
+  type StreamChunk,
+} from './stream';
 
 // 우선순위 순서. 앞 모델이 실패하면 다음 모델로 폴백한다.
 const GOOGLE_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.5-flash'];
@@ -65,7 +72,10 @@ function resolveApiKey(provider: Provider, clientKey?: string): string | null {
   return clientKey || ENV_KEYS[provider] || null;
 }
 
-async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
+// 프로바이더 연결을 열고 텍스트 조각을 흘려보내는 스트림을 반환한다.
+// Anthropic은 연결 단계 실패(4xx/5xx)가 응답 전에 throw 되므로 HTTP 상태 코드로 매핑된다.
+// Google은 streamGoogle이 지연 실행되어 연결 실패도 SSE error 이벤트로 전달된다.
+async function streamAnthropic(prompt: string, apiKey: string): Promise<AsyncGenerator<string>> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -76,27 +86,27 @@ async function callAnthropic(prompt: string, apiKey: string): Promise<string> {
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
+      stream: true,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     throw new Error(`Claude API error: ${response.status}`);
   }
 
-  const data = (await response.json()) as {
-    content: Array<{ type: string; text?: string }>;
-  };
-
-  return data.content
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text)
-    .join('');
+  const body = response.body;
+  return (async function* () {
+    for await (const data of parseSSE(body)) {
+      const text = anthropicTextDelta(data);
+      if (text) yield text;
+    }
+  })();
 }
 
-async function callGoogleModel(prompt: string, apiKey: string, model: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+async function openGoogleStream(prompt: string, apiKey: string, model: string): Promise<ReadableStream<Uint8Array>> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -108,31 +118,39 @@ async function callGoogleModel(prompt: string, apiKey: string, model: string): P
     }),
   });
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     throw new Error(`Gemini API error: ${response.status}`);
   }
-
-  const data = (await response.json()) as {
-    candidates: Array<{
-      content: { parts: Array<{ text?: string }> };
-      finishReason?: string;
-    }>;
-  };
-
-  const candidate = data.candidates?.[0];
-  if (candidate?.finishReason === 'MAX_TOKENS') {
-    throw new Error('생성된 코드가 너무 길어 잘렸습니다. 더 간단한 컴포넌트를 요청해주세요.');
-  }
-
-  return (
-    candidate?.content?.parts
-      ?.map((part) => part.text)
-      ?.join('') ?? ''
-  );
+  return response.body;
 }
 
-async function callGoogle(prompt: string, apiKey: string): Promise<string> {
-  return withModelFallback(GOOGLE_MODELS, (model) => callGoogleModel(prompt, apiKey, model));
+// 연결 실패뿐 아니라 스트림 도중 실패(MAX_TOKENS 등)에도 다음 모델로 폴백한다.
+// 이미 조각을 보냈다면 RESET으로 클라이언트가 지금까지의 코드를 비우게 한다.
+function streamGoogle(prompt: string, apiKey: string): AsyncGenerator<StreamChunk> {
+  return withStreamFallback(GOOGLE_MODELS, async (model) => {
+    const body = await openGoogleStream(prompt, apiKey, model);
+    return (async function* () {
+      for await (const data of parseSSE(body)) {
+        const text = googleTextDelta(data);
+        if (text) yield text;
+      }
+    })();
+  });
+}
+
+function errorResponse(message: string): Response {
+  const { status, message: friendly } = friendlyErrorMessage(message);
+  return Response.json({ error: friendly }, { status, headers: CORS_HEADERS });
+}
+
+function toSSEResponse(chunks: AsyncGenerator<StreamChunk>): Response {
+  return new Response(toEventStream(chunks), {
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache',
+    },
+  });
 }
 
 const server = Bun.serve({
@@ -180,35 +198,14 @@ const server = Bun.serve({
           );
         }
 
-        const text =
+        const chunks =
           provider === 'google'
-            ? await callGoogle(prompt, resolvedKey)
-            : await callAnthropic(prompt, resolvedKey);
+            ? streamGoogle(prompt, resolvedKey)
+            : await streamAnthropic(prompt, resolvedKey);
 
-        const code = ensureRenderCall(stripCodeFences(text));
-
-        return Response.json({ code }, { headers: CORS_HEADERS });
+        return toSSEResponse(chunks);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unknown error';
-
-        if (message.includes('503')) {
-          return Response.json(
-            { error: 'API 서버가 일시적으로 과부하 상태입니다. 잠시 후 다시 시도해주세요.' },
-            { status: 503, headers: CORS_HEADERS }
-          );
-        }
-
-        if (message.includes('429')) {
-          return Response.json(
-            { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-            { status: 429, headers: CORS_HEADERS }
-          );
-        }
-
-        return Response.json(
-          { error: message },
-          { status: 500, headers: CORS_HEADERS }
-        );
+        return errorResponse(err instanceof Error ? err.message : 'Unknown error');
       }
     }
 

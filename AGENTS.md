@@ -14,10 +14,10 @@
 
 ### Immutable
 
-- API 포트 3002는 `server/index.ts:139`와 `vite.config.ts:8-10`(proxy target)에 중복 정의되어 있다. 하나를 바꾸면 반드시 둘 다 바꾼다.
-- 환경변수 API 키(`ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`)는 클라이언트로 노출하지 않는다. `/api/config`는 boolean만 반환한다 (`server/index.ts:147-156`). 키 값 자체를 응답, 로그, 에러 메시지에 넣지 마라.
+- API 포트 3002는 `server/index.ts:156`과 `vite.config.ts:8-10`(proxy target)에 중복 정의되어 있다. 하나를 바꾸면 반드시 둘 다 바꾼다.
+- 환경변수 API 키(`ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`)는 클라이언트로 노출하지 않는다. `/api/config`는 boolean만 반환한다 (`server/index.ts:164-174`). 키 값 자체를 응답, 로그, 에러 메시지에 넣지 마라.
 - 사용자가 UI에 입력한 API 키는 React state에만 둔다 (`src/App.tsx:14`). localStorage 등에 저장하지 마라.
-- 프론트는 항상 상대 경로 `/api/*`로 호출한다 (`src/hooks/useComponentGenerator.ts:20`). 서버 주소를 하드코딩하지 마라.
+- 프론트는 항상 상대 경로 `/api/*`로 호출한다 (`src/hooks/useComponentGenerator.ts:49`). 서버 주소를 하드코딩하지 마라.
 
 ### 민감 파일 차단 (Security Boundary)
 
@@ -51,15 +51,15 @@
 
 - 미리보기는 react-live `noInline` 모드다 (`src/components/LivePreview.tsx:14`). 생성 코드 끝에 `render(<Component />)` 호출이 있어야 렌더된다. `import`, TypeScript 문법, 마크다운 펜스가 있으면 실행에 실패한다.
 - 이 계약은 두 곳에서 이중으로 방어한다. 한쪽만 제거하지 마라.
-  - 프롬프트 지시: `server/index.ts:9-20` (SYSTEM_PROMPT)
-  - 응답 후처리: `server/generator.ts:5-24` (`stripCodeFences`, `ensureRenderCall`)
+  - 프롬프트 지시: `server/index.ts:14-56` (SYSTEM_PROMPT)
+  - 응답 후처리: `server/generator.ts:5-24` (`stripCodeFences`, `ensureRenderCall`). 스트리밍 응답에서는 `server/stream.ts`의 `toEventStream`이 `done` 이벤트를 만들 때 호출한다. `delta` 조각은 후처리 전 원문이므로 최종 코드로 쓰지 마라.
 - SYSTEM_PROMPT의 규칙을 바꾸면 `server/generator.ts`와 `server/generator.test.ts`의 가정도 함께 점검한다.
 
 ### Do's and Don'ts
 
 - Do: 순수 로직은 `server/generator.ts`, `server/fallback.ts`처럼 부수효과 없는 모듈로 분리하고 테스트를 붙인다.
-- Do: 프론트 테스트는 `src/**/*.test.tsx`, jsdom + Testing Library (`vite.config.ts:14-19`, `src/test/setup.ts`).
-- Don't: 테스트에서 `server/index.ts`를 import하지 마라. import 즉시 `Bun.serve`가 실행된다 (`server/index.ts:138`).
+- Do: 프론트 테스트는 `src/**/*.test.tsx`, jsdom + Testing Library (`vite.config.ts:16-21`, `src/test/setup.ts`).
+- Don't: 테스트에서 `server/index.ts`를 import하지 마라. import 즉시 `Bun.serve`가 실행된다 (`server/index.ts:155`).
 - Don't: 서버 전용 규칙(에러 매핑, 프로바이더 차이)은 `server/AGENTS.md`를 따른다.
 
 ## Project Context

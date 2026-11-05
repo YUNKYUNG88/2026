@@ -665,9 +665,10 @@
 
 .code-block {
   min-height: 320px;
+  max-height: 520px;
   margin: 0;
   padding: 20px 22px;
-  overflow-x: auto;
+  overflow: auto;
   background: var(--ink);
   color: #eaeaea;
   font-family: var(--font-mono);
@@ -745,6 +746,29 @@
 
 @media (prefers-reduced-motion: reduce) {
   .loading-pulse {
+    animation: none;
+  }
+}
+
+/* 스트리밍 중 코드 끝의 깜빡이는 커서 */
+.stream-caret {
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  animation: stream-caret-blink 1s steps(1) infinite;
+}
+
+@keyframes stream-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-caret {
     animation: none;
   }
 }
