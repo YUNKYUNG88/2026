@@ -13,6 +13,16 @@
             "timeout": 300
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"$CLAUDE_PROJECT_DIR/.claude/hooks/tdd-reminder.ts\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   },

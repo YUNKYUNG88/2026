@@ -2,14 +2,14 @@
 // stdin: Claude Code가 넘기는 JSON ({ tool_input: { command } })
 // exit 0 = 통과, exit 2 = 차단 (stderr가 Claude에게 전달됨)
 
-const GIT_COMMIT = /(^|[;&|(]\s*|\s)git\s+(-\S+\s+(\S+\s+)?)*commit(\s|$)/;
+import { isGitCommit } from "./commit-guard";
 
 const input = JSON.parse(await Bun.stdin.text()) as {
   tool_input?: { command?: string };
 };
 const command = input.tool_input?.command ?? "";
 
-if (!GIT_COMMIT.test(command)) process.exit(0);
+if (!isGitCommit(command)) process.exit(0);
 
 console.error("[hook] git commit 감지: 전체 테스트를 실행합니다...");
 
