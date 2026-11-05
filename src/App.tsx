@@ -18,7 +18,7 @@ function App() {
     anthropic: false,
     google: false,
   });
-  const { components, isLoading, error, generate, removeComponent, clearAll } =
+  const { components, draft, isLoading, error, generate, removeComponent, clearAll } =
     useComponentGenerator();
 
   useEffect(() => {
@@ -167,7 +167,7 @@ function App() {
           </div>
         )}
 
-        {isLoading && (
+        {isLoading && !draft && (
           <div className="loading-card window">
             <div className="loading-pulse" />
             <p>컴포넌트를 생성하고 있습니다...</p>
@@ -175,13 +175,15 @@ function App() {
         )}
 
         <div className="results-grid">
-          {components.map((component) => (
+          {/* draft와 확정 컴포넌트가 같은 id/리스트를 쓰므로, 완료 시 카드가 재마운트 없이 미리보기 탭으로 전환된다. */}
+          {(draft ? [draft, ...components] : components).map((component) => (
             <ComponentCard
               key={component.id}
               component={component}
               onRemove={removeComponent}
               onRegenerate={handleGenerate}
               isLoading={isLoading}
+              isStreaming={draft?.id === component.id}
             />
           ))}
         </div>
